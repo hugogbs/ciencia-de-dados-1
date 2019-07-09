@@ -1,0 +1,85 @@
+---
+title: "Untitled"
+output: html_document
+author: "Hugo Gabriel"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(GGally)
+library(broom)
+library(pscl)
+library(gridExtra)
+```
+
+
+```{r}
+date_data <- read_csv("speed-dating2.csv")
+```
+
+Com base na descrição dos dados, foram selecionadas as seguintes colunas:
+
+__attr__ : quão atraente p1 achou p2
+__sinc__ : quão sincero p1 achou p2
+__intel__ : quão inteligente p1 achou p2
+__fun__ : quão divertido p1 achou p2
+__amb__ : quão ambicioso p1 achou p2
+__shar__ : quanto p1 achou que compartilha interesses e hobbies com p2
+__like__ : no geral, quanto p1 gostou de p2
+
+```{r}
+date_data <- date_data %>%
+    select(attr, sinc, intel, fun, amb, shar, like, dec) %>%
+    mutate(dec = as.factor(dec))
+    na.omit()
+```
+
+
+```{r}
+base_plot <- date_data %>%
+    ggplot(aes(x=dec)) +
+    xlab("Match")
+
+box_attr <- base_plot + geom_violin(aes(y=attr), fill="#522B47") + ylab("'Atraência'")
+box_sinc <- base_plot + geom_violin(aes(y=sinc), fill="#7B0828") + ylab("Sinceridade")
+box_intel <- base_plot + geom_violin(aes(y=intel), fill="#E0BAD7") + ylab("Inteligência")
+box_fun <- base_plot + geom_violin(aes(y=fun), fill="#61D095") + ylab("")
+box_amb <- base_plot + geom_violin(aes(y=amb), fill="#297373") + ylab("")
+box_shar <- base_plot + geom_violin(aes(y=shar), fill="#FCDE9C")
+box_like <- base_plot + geom_violin(aes(y=like), fill="#8F95D3")
+
+grid.arrange(box_attr, box_sinc, box_intel, box_fun, box_amb, box_like, ncol=3)
+```
+
+
+```{r}
+model <- glm(dec ~ attr + sinc + intel + fun + amb + shar + like,
+             data = date_data, family = 'binomial')
+```
+
+```{r}
+model_tidy <- tidy(model, conf.int = TRUE, conf.level = .95) %>%
+    select(-c(std.error, p.value))
+
+model_tidy
+```
+
+
+```{r}
+model_tidy %>%
+    filter(term != "(Intercept)") %>%
+    ggplot(aes(x=reorder(term, estimate), y=estimate)) +
+    geom_point() +
+    geom_errorbar(aes(ymin=conf.low, ymax=conf.high)) +
+    geom_hline(aes(yintercept = 0), linetype=2, color="#696969") +
+    theme_bw()
+```
+
+
+```{r}
+pR2(model)
+```
+
+
