@@ -1,11 +1,17 @@
 ---
-title: "Untitled"
+title: "L4P2: Regressão romântica"
 output: html_document
 author: "Hugo Gabriel"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  screenshot.force = FALSE,
+  fig.align = 'center',
+  fig.width = 6,
+  fig.height = 6)
 
 library(tidyverse)
 library(GGally)
@@ -14,72 +20,175 @@ library(pscl)
 library(gridExtra)
 ```
 
+Nesta análise estamos utilizando dados de encontros relâmpago realizados envolvendo 310 jovens norte-americanos. Mais detalhes sobre os dados podem ser encontrados [aqui](https://github.com/hugogbs/ciencia-de-dados-1/tree/master/5-regressao/speed-dating).
 
 ```{r}
 date_data <- read_csv("speed-dating2.csv")
 ```
 
+Os dados contam com `r nrow(date_data)` observações e `r ncol(date_data)` variáveis.
+
 Com base na descrição dos dados, foram selecionadas as seguintes colunas:
 
-__attr__ : quão atraente p1 achou p2
-__sinc__ : quão sincero p1 achou p2
-__intel__ : quão inteligente p1 achou p2
-__fun__ : quão divertido p1 achou p2
-__amb__ : quão ambicioso p1 achou p2
-__shar__ : quanto p1 achou que compartilha interesses e hobbies com p2
-__like__ : no geral, quanto p1 gostou de p2
+- __Atraente__ : quão atraente p1 achou p2
+- __Sincera(o)__ : quão sincero p1 achou p2
+- __Inteligente__ : quão inteligente p1 achou p2
+- __Divertido(a)__ : quão divertido p1 achou p2
+- __Ambicioso(a)__ : quão ambicioso p1 achou p2
+- __Compartilha Interesses__ : quanto p1 achou que compartilha interesses e hobbies com p2
+- __Gostei__ : no geral, quanto p1 gostou de p2
+
+para descrever o __Match__.
 
 ```{r}
 date_data <- date_data %>%
-    select(attr, sinc, intel, fun, amb, shar, like, dec) %>%
-    mutate(dec = as.factor(dec))
+    mutate(dec = as.factor(dec)) %>%
+    mutate(
+      Match = dec,
+      Atraente = attr,
+      `Sincera(o)` = sinc,
+      Inteligente = intel,
+      `Divertido(a)` = fun,
+      `Ambicioso(a)` = amb,
+      `Compartilha Interesses` = shar,
+      Gostei = like
+    ) %>%
+    select(Match, Atraente, `Sincera(o)`, Inteligente, `Divertido(a)`, `Ambicioso(a)`, `Compartilha Interesses`, Gostei) %>%
     na.omit()
 ```
 
+Após a seleção das variáveis e a remoção de _NA_, nossos dados tem `r nrow(date_data)` observações e `r ncol(date_data)` variáveis.
+
+Nestes dados tempos as seguinte proporção de Matchs:
 
 ```{r}
-base_plot <- date_data %>%
-    ggplot(aes(x=dec)) +
-    xlab("Match")
-
-box_attr <- base_plot + geom_violin(aes(y=attr), fill="#522B47") + ylab("'Atraência'")
-box_sinc <- base_plot + geom_violin(aes(y=sinc), fill="#7B0828") + ylab("Sinceridade")
-box_intel <- base_plot + geom_violin(aes(y=intel), fill="#E0BAD7") + ylab("Inteligência")
-box_fun <- base_plot + geom_violin(aes(y=fun), fill="#61D095") + ylab("")
-box_amb <- base_plot + geom_violin(aes(y=amb), fill="#297373") + ylab("")
-box_shar <- base_plot + geom_violin(aes(y=shar), fill="#FCDE9C")
-box_like <- base_plot + geom_violin(aes(y=like), fill="#8F95D3")
-
-grid.arrange(box_attr, box_sinc, box_intel, box_fun, box_amb, box_like, ncol=3)
+date_data %>%
+  group_by(Match) %>%
+  count() %>% 
+  arrange(-n) %>%
+  ggplot(aes(x="", fill=Match, y=n)) +
+  geom_bar(stat="identity", position = "fill", width=.3) +
+  geom_hline(aes(yintercept=0.5), linetype = 3, color="#696969") +
+  coord_flip() +
+  theme_minimal()
 ```
 
 
+Nossas variáveis tem a seguinte distribuição em relação à variável resposta:
+
+```{r fig.width = 9, fig.height = 8}
+
+plot_att <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=Atraente, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_sinc <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=`Sincera(o)`, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_intel <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=Inteligente, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_div <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=`Divertido(a)`, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_amb <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=`Ambicioso(a)`, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_comp <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=`Compartilha Interesses`, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+plot_gostei <- date_data %>%
+  ggplot() +
+  geom_histogram(aes(x=Gostei, fill=Match)) +
+  facet_wrap(~Match) +
+  theme(legend.position = "none") + 
+  theme_minimal()
+
+grid.arrange(plot_att, plot_sinc, plot_intel, plot_div, plot_amb, plot_comp, plot_gostei, ncol=2)
+```
+
+
+
+Utilizaremos um modelo de [regressão logística](https://pt.wikipedia.org/wiki/Regress%C3%A3o_log%C3%ADstica) para determinar o __odds__ de uma pessoa dar __Match__ com a outra, com base nas variáveis escolhidas.
+
+O odds é calculado como: $p(Match)/(1 - p(Match))$ 
+
 ```{r}
-model <- glm(dec ~ attr + sinc + intel + fun + amb + shar + like,
-             data = date_data, family = 'binomial')
+model <- glm(Match ~ Atraente + `Sincera(o)` + Inteligente + `Divertido(a)` + `Ambicioso(a)` + `Compartilha Interesses` + Gostei, data = date_data, family = 'binomial')
 ```
 
 ```{r}
-model_tidy <- tidy(model, conf.int = TRUE, conf.level = .95) %>%
+model_tidy <- tidy(model, conf.int = TRUE, conf.level = .95, exp=TRUE) %>%
     select(-c(std.error, p.value))
-
-model_tidy
 ```
 
+De acordo com o modelo gerado, a fórmula que descreve o odds é:
+
+> Odds = 1.94^Gostei^ + 1.5^Atraente^ + 1.22^'Compartilha Interesses'^ + 1.14^Divertido(a)^ + 0.94^Inteligente^ + 0.81^Ambicioso(a)^ + 0.81^Sincera(o)^ + 0.003
+
+A visualização abaixo nos mostra a estimativa e o intervalo de confiança (95%) de cada variável.
 
 ```{r}
 model_tidy %>%
     filter(term != "(Intercept)") %>%
     ggplot(aes(x=reorder(term, estimate), y=estimate)) +
     geom_point() +
-    geom_errorbar(aes(ymin=conf.low, ymax=conf.high)) +
-    geom_hline(aes(yintercept = 0), linetype=2, color="#696969") +
-    theme_bw()
+    geom_errorbar(aes(ymin=conf.low, ymax=conf.high),  width=.1) +
+    geom_hline(aes(yintercept = 1), linetype=2, color="#696969") +
+    theme_bw() +
+    labs(x="Variável", y="Estimativa") + 
+    coord_flip()
 ```
 
 
-```{r}
-pR2(model)
-```
+Com o gráfico podemos perceber facilmente quais variáveis têm mais infuência sobre o odds, a exemplo de __Gostei__ que tem o maior "peso".
+
+Já as variáveis __Sincera(o)__ e __Ambicioso(a)__ têm influência negativa, ou seja, a medida que elas crescem o odds cai.
+
+A característica __Inteligente__ tem um intervalo de confiança que cruza o zero, o que indica que ela pode ter efeito negativo, nenhum efeito ou ainda um efeito positivo muito pequeno. O que não é esperado dessa variável é um efeito positivo muito alto, por exemplo.
+
+O coeficiente de McFadden do nosso modelo é __0.314__.
+
+### Conclusão
+
+Regressão logística foi utilizada para analisar se o Atraente, Sincera(o), Inteligente, `Divertido(a)`, `Ambicioso(a)`, `Compartilha Interesses` e Gostei têm uma associação significativa com o Match. Os resultados da regressão indicam que um modelo com os 7 preditores no formato:
+
+__Odds = 1.94^Gostei^ + 1.5^Atraente^ + 1.22^'Compartilha Interesses'^ + 1.14^Divertido(a)^ + 0.94^Inteligente^ + 0.81^Ambicioso(a)^ + 0.81^Sincera(o)^ + 0.003__
+
+explica __31.4%__ da variância da variável de resposta.
+
+Ainda quanto ao Odds, observamos que considerando IC's com 95% de confiança:
+
+- Gostei, tem uma relação positiva forte (b~Gostei~ = 1.94, [1.79; 2.11]); 
+- Atraente, tem uma relação positiva forte (b~Atraente~ = 1.5, [1.42; 1.60]);
+- Compartilha Interesses, tem uma relação positiva mediana (b~'Compartilha Interesses'~ = 1.22, [1.16; 1.28]);
+- Divertido(a), tem uma relação positiva fraca (b~Divertido(a)~ = 1.14, [1.07; 1.22]);
+- Inteligente, tem uma relação que pode ou não influir (b~Inteligente~ = 0.94, [0.87; 1.02])
+- Ambicioso(a), tem uma relação negativa fraca (b~Ambicioso(a)~ = 0.81, [0.76; 0.87])
+- Sincera(o), tem uma relação negativa fraca (b~Sincera(o)~ = 0.81, [0.76; 0.87])
+
 
 
